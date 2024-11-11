@@ -271,8 +271,22 @@ class Sys3WRobotNI(System):
     
     def _state_dyn(self, t, state, action, disturb=[]):   
         Dstate = np.zeros(self.dim_state)
+        # print("********")
+        # print(t)
+        # print(state)
+        # print(action)
+        # print(disturb)
+        Dstate = np.zeros(self.dim_state)
+        # Extract current state variables: position (x, y) and orientation (theta)
+        x, y, theta = state
         
+        # Extract control inputs for linear and angular velocities
+        v, omega = action  # where v is linear velocity and omega is angular velocity
 
+        # Compute the derivatives based on the non-holonomic robot kinematic model
+        Dstate[0] = v * np.cos(theta) 
+        Dstate[1] = v * np.sin(theta) 
+        Dstate[2] = omega              # dtheta/dt = omega
         #####################################################################################################
         ############################# write down here math model of robot ###################################
         #####################################################################################################    

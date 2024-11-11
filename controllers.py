@@ -550,11 +550,30 @@ class ControllerOptimalPredictive:
             return self.action_curr
 
 class N_CTRL:
+    def __init__(self, k_rho=1.8, k_alpha=3.0, k_beta=-0.5):
+        # Controller gains for proportional control
+        self.k_rho = k_rho    # Gain for linear velocity
+        self.k_alpha = k_alpha  # Gain for angular velocity
+        self.k_beta = k_beta
+    def pure_loop(self, observation):
+        print("*****")
+        print(observation)
+        
+        dx = 0 - observation[0]
+        dy = 0 - observation[1]
 
-        #####################################################################################################
-        ########################## write down here nominal controller class #################################
-        #####################################################################################################
+        # Polar coordinates of the goal in the robot's frame
+        rho = math.sqrt(dx**2 + dy**2)  # Distance to goal
+        alpha = math.atan2(dy, dx) - observation[2]  # Heading angle to goal
+        beta = 0 - observation[2] - alpha
+        
+        # Normalize alpha to range [-pi, pi]
+        alpha = (alpha + math.pi) % (2 * math.pi) - math.pi
+        beta = (beta + math.pi) % (2 * math.pi) - math.pi
 
+        # Control law
+        v = self.k_rho * rho  # Linear velocity proportional to distance
+        w = self.k_alpha * alpha + self.k_beta * beta  # Angular velocity proportional to heading error
         return [v,w]
 
 
