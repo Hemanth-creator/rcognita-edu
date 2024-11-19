@@ -567,9 +567,9 @@ class N_CTRL:
         alpha = math.atan2(dy, dx) - observation[2]  # Heading angle to goal
         beta = 0 - observation[2] - alpha
         
-        # Normalize alpha to range [-pi, pi]
-        alpha = (alpha + math.pi) % (2 * math.pi) - math.pi
-        beta = (beta + math.pi) % (2 * math.pi) - math.pi
+        # # Normalize alpha to range [-pi, pi]
+        # alpha = (alpha + math.pi) % (2 * math.pi) - math.pi
+        # beta = (beta + math.pi) % (2 * math.pi) - math.pi
 
         # Control law
         v = self.k_rho * rho  # Linear velocity proportional to distance
