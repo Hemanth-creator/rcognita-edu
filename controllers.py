@@ -355,6 +355,7 @@ class ControllerOptimalPredictive:
             self.Wmin = np.zeros(self.dim_critic) 
             self.Wmax = np.ones(self.dim_critic) 
         self.N_CTRL = N_CTRL()
+        self.S_CTRL = S_CTRL()
 
     def reset(self,t0):
         """
@@ -542,18 +543,68 @@ class ControllerOptimalPredictive:
                 
                 action = self.N_CTRL.pure_loop(observation)
             
+            elif self.mode == "S_CTRL":
+                action = self.S_CTRL.pure_loop(observation)
+            
             self.action_curr = action
             
             return action    
     
         else:
             return self.action_curr
+        
+class S_CTRL:      
+    def __init__(self):
+        self.x_control = [-3, -1, -2, 0]
+        self.y_control = [-3, -2, -1, 0]
+        self.z_control = [1.54, 1, 1, 1]
+        self.num_points = 5
+        self.curve_points = self.generate_curve_points()
+        self.previous_v=0
+        self.previous_w=0
+        self.next_point=[]
+        self.current_point=[]
+    def generate_curve_points(self):
+        curve_points = []
+        t_vals = np.linspace(0, 1, self.num_points)
+        for t in t_vals:
+            Bt = (1 - t) ** 3, 3 * (1 - t) ** 2 * t, 3 * (1 - t) * t ** 2, t ** 3
+            x = sum(Bt[i] * self.x_control[i] for i in range(4))
+            y = sum(Bt[i] * self.y_control[i] for i in range(4))
+            z = sum(Bt[i] * self.z_control[i] for i in range(4))
+            curve_points.append((x, y, z))
+        print(curve_points)
+        return curve_points
+    def calculate_nearest_point(self,current_pose):
+        trajectory_oints = self.curve_points
+        distances=[]
+        for point in trajectory_oints:
+            distance = np.sqrt((point[0] - current_pose[0])**2 + (point[1] - current_pose[1])**2)
+            distances.append(distance)
+        index_of_nearest_point=distances.index(min(distances))
+        nearest_point = trajectory_oints[index_of_nearest_point]
+        
+        return nearest_point
+    
+    def pure_loop(self, observation):
+        
+        self.current_point=observation
+        nearest_point = self.calculate_nearest_point(observation)
+        self.next_point=nearest_point
+        
+        v=0.2
+        k=1 #proportional gain
+        theta_e = nearest_point[2]-observation[2]
+        efa = (nearest_point[1]-observation[1])*np.cos(observation[2])-(nearest_point[0]-observation[0])*np.cos(observation[2])
+        dt = theta_e + np.arctan((k*efa)/v)
+        w=dt
+        return [v,w]
 
 class N_CTRL:
     def __init__(self, k_rho=1.8, k_alpha=3.0, k_beta=-0.5):
-        # Controller gains for proportional control
-        self.k_rho = k_rho    # Gain for linear velocity
-        self.k_alpha = k_alpha  # Gain for angular velocity
+        print("testing nominal controller")
+        self.k_rho = k_rho
+        self.k_alpha = k_alpha
         self.k_beta = k_beta
     def pure_loop(self, observation):
         print("*****")
@@ -562,18 +613,14 @@ class N_CTRL:
         dx = 0 - observation[0]
         dy = 0 - observation[1]
 
-        # Polar coordinates of the goal in the robot's frame
-        rho = math.sqrt(dx**2 + dy**2)  # Distance to goal
-        alpha = math.atan2(dy, dx) - observation[2]  # Heading angle to goal
+    
+        rho = math.sqrt(dx**2 + dy**2)
+        alpha = math.atan2(dy, dx) - observation[2]
         beta = 0 - observation[2] - alpha
         
-        # Normalize alpha to range [-pi, pi]
-        alpha = (alpha + math.pi) % (2 * math.pi) - math.pi
-        beta = (beta + math.pi) % (2 * math.pi) - math.pi
-
-        # Control law
-        v = self.k_rho * rho  # Linear velocity proportional to distance
-        w = self.k_alpha * alpha + self.k_beta * beta  # Angular velocity proportional to heading error
+        
+        v = self.k_rho * rho 
+        w = self.k_alpha * alpha + self.k_beta * beta  
         return [v,w]
 
 

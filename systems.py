@@ -13,7 +13,7 @@ Remarks:
 
 import numpy as np
 from numpy.random import randn
-
+import math
 class System:
     """
     Interface class of dynamical systems a.k.a. environments.
@@ -280,23 +280,19 @@ class Sys3WRobotNI(System):
         # Extract current state variables: position (x, y) and orientation (theta)
         x, y, theta = state
         
-        # Extract control inputs for linear and angular velocities
-        v, omega = action  # where v is linear velocity and omega is angular velocity
+        # v omega linear and angular velocity
+        v, omega = action
 
         # Compute the derivatives based on the non-holonomic robot kinematic model
         Dstate[0] = v * np.cos(theta) 
         Dstate[1] = v * np.sin(theta) 
-        Dstate[2] = omega              # dtheta/dt = omega
-        #####################################################################################################
-        ############################# write down here math model of robot ###################################
-        #####################################################################################################    
+        Dstate[2] = omega             
+        
              
         return Dstate    
  
     def _disturb_dyn(self, t, disturb):
         """
-        
-        
         """       
         Ddisturb = np.zeros(self.dim_disturb)
         
@@ -309,4 +305,49 @@ class Sys3WRobotNI(System):
         observation = np.zeros(self.dim_output)
         observation = state
         return observation
+    
+class SysCarLikeRobot(System):
+    """
+    System class: Car like mon=bile robot
+    """ 
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.name = '3wrobotNI'
+        
+        if self.is_disturb:
+            self.sigma_disturb = self.pars_disturb[0]
+            self.mu_disturb = self.pars_disturb[1]
+            self.tau_disturb = self.pars_disturb[2]
+    
+    def _state_dyn(self, t, state, action, disturb=[]):   
+        Dstate = np.zeros(self.dim_state)       # 3 states x y thetha
 
+        
+        # for car-like mobile robot
+        wheel_base = 0.25
+        Dstate[0] = action[0]*np.cos(state[2])
+        Dstate[1] = action[0]*np.sin(state[2])
+        # Dstate[2] = action[1]/wheel_base
+        Dstate[2] = (action[0]/wheel_base) * np.tan(action[1]) 
+
+        Dstate[0]=Dstate[0]+wheel_base*np.cos(state[2])
+        Dstate[1]=Dstate[1]+wheel_base*np.sin(state[2])
+    
+        return Dstate 
+ 
+          
+ 
+    def _disturb_dyn(self, t, disturb):      
+        Ddisturb = np.zeros(self.dim_disturb)
+        
+        for k in range(0, self.dim_disturb):
+            Ddisturb[k] = - self.tau_disturb[k] * ( disturb[k] + self.sigma_disturb[k] * (randn() + self.mu_disturb[k]) )
+                
+        return Ddisturb   
+    
+    def out(self, state, action=[]):
+        observation = np.zeros(self.dim_output)
+        observation = state
+        return observation
